@@ -24,8 +24,8 @@ conn = sqlite3.connect(opts.file)
 c = conn.cursor()
 
 ## for Asymm CP errors
-import betainv
-beta = betainv.create_betainv_instance()
+#import betainv
+#beta = betainv.create_betainv_instance()
 
 class summary():
 
@@ -372,10 +372,10 @@ with plt.xkcd():
         n = norm[key] ## compact writing
         x= numerator[key] ## compact writing
         a=0.682689492137086
-        #low = 1./( 1+ (n-x+1)/(x*ROOT.TMath.FDistI(a/2.,2*x,2*(n-x+1)))) 
-        #hi  = 1./(1+(n-x)/((x+1)*ROOT.TMath.FDistI(1.-a/2.,2*(x+1),2*(n-x))))
-        low = beta.betainv(a/2.,x,n-x+1)
-        hi = beta.betainv(1.-a/2.,x+1,n-x)
+        #low = beta.betainv(a/2.,x,n-x+1)
+        #hi = beta.betainv(1.-a/2.,x+1,n-x)
+        low = ROOT.TEfficiency.ClopperPearson(n,x,a,False) 
+        hi = ROOT.TEfficiency.ClopperPearson(n,x,a,True)
         errLow.append( p-low)
         errHigh.append( hi -p )
         print key,p,"low=",low,"high",hi
