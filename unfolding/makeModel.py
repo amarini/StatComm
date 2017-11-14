@@ -3,6 +3,7 @@
 
 import ROOT 
 from array import array
+import re
 
 # construct model and datacard
 # type = cut & count / pdf
@@ -28,10 +29,20 @@ class Model():
         self.fname = "workspace.root"
         self.dname = "datacard.txt"
 
+    def info(self):
+        print "-------------------------"
+        print "bins truth:",self.nbins_x,"smeared",self.nbins_y
+        print "n. events: sig:",self.nevents, ("bkg: %s"%self.nbkg) if self.bkg else "bkg: None"
+        print "type:",self.type
+        print "workspace:",self.fname
+        print "datacard:",self.dname
+        print "-------------------------"
+
     def run(self):
         self.doModel()
         self.doWorkspace()
         self.doDatacard()
+        self.info()
         return self
 
     def doModel(self):
@@ -55,7 +66,7 @@ class Model():
             self.x_th1 .SetBinContent( self.x_th1.FindBin(i+0.5), count)
         ## construct smearing matrix
         ## y = M.x + b
-        self.Mhat=ROOT.TH1D("Mhat","response probability matrix (X=truth, Y=Reco)",self.nbins_x,xmin,xmax,self.nbins_y,xmin,xmax)
+        self.Mhat=ROOT.TH2D("Mhat","response probability matrix (X=truth, Y=Reco)",self.nbins_x,xmin,xmax,self.nbins_y,xmin,xmax)
         for i in range(0,self.nbins_x):
             for j in range(0,self.nbins_y):
                 binX= self.Mhat.GetXaxis().FindBin(i+0.5)
@@ -73,7 +84,7 @@ class Model():
                 c= self.Mhat.GetBinContent(binX,binY)
                 self.Mhat.SetBinContent(binX,binY, c * self.eff[i]/S )
         ## construct background
-        self.b_th1 = ROOT.TH1("b_th1","background count in each bin",self.nbins_y,xmin,xmax)
+        self.b_th1 = ROOT.TH1D("b_th1","background count in each bin",self.nbins_y,xmin,xmax)
         if self.bkg:
             for i in range(0,self.nbins_y):
                 rangename = "bkg_range_%d"%i
@@ -98,7 +109,7 @@ class Model():
             self.y_th1.SetBinContent(binY,y)
 
         ## construct M for future references / RooUnfold way
-        self.M=ROOT.TH1D("M","response matrix (X=truth, Y=Reco)",self.nbins_x,xmin,xmax,self.nbins_y,xmin,xmax)
+        self.M=ROOT.TH2D("M","response matrix (X=truth, Y=Reco)",self.nbins_x,xmin,xmax,self.nbins_y,xmin,xmax)
         for i in range(0,self.nbins_x):
             for j in range(0,self.nbins_y):
                 binX= self.Mhat.GetXaxis().FindBin(i+0.5)
@@ -110,7 +121,7 @@ class Model():
     def Import(self,obj):
         getattr(self.w,'import')(obj,ROOT.RooCmdArg())
 
-    def doWorspace(self):
+    def doWorkspace(self):
         self.w = ROOT.RooWorkspace("w","w")
         ##self.pdf = ROOT.TF1("myfunc","x*x*x*TMath::Exp(-x)/5.9380",0,10)
         #create observable x (truth)
@@ -121,7 +132,7 @@ class Model():
         self.Import(self.mgg)
         self.Import(self.MH )
         
-        if opts.type =='pdf':
+        if self.type =='pdf':
             self.sigmaD = ROOT.RooRealVar("sigmaD","sigma diagonal elements",1.)
             self.sigmaO = ROOT.RooRealVar("sigmaO","sigma off-diagonal elements",2.)
 
@@ -135,17 +146,17 @@ class Model():
                 binX= self.Mhat.GetXaxis().FindBin(i+0.5)
                 binY= self.Mhat.GetYaxis().FindBin(j+0.5)
 
-                norm = ROOT.RooRealVar(name +"_norm","normalization of xxx",self.M.GetBinContent(binX,binY)
+                norm = ROOT.RooRealVar(name +"_norm","normalization of xxx",self.M.GetBinContent(binX,binY))
                 if self.type == 'c&c':
                     pdf = ROOT.RooUniform(name,"Fake pdf for "+name,self.mgg)
                 elif self.type == 'pdf':
-                    if i==j:pdf = ROOT.Gaussian(name,"Gauss pdf for "+name,self.mgg,self.MH,self.sigmaD)
-                    else:pdf = ROOT.Gaussian(name,"Gauss pdf for "+name,self.mgg,self.MH,self.sigmaO)
+                    if i==j:pdf = ROOT.RooGaussian(name,"Gauss pdf for "+name,self.mgg,self.MH,self.sigmaD)
+                    else:pdf = ROOT.RooGaussian(name,"Gauss pdf for "+name,self.mgg,self.MH,self.sigmaO)
                 self.Import(norm)
                 self.Import(pdf)
 
         if self.bkg:
-            if opts.type =='pdf':
+            if self.type =='pdf':
                 self.tau = ROOT.RooRealVar("tau","tau for bkg",-0.2)
                 self.Import(self.sigmaD)
 
@@ -193,7 +204,7 @@ class Model():
         self.datacard.write("shape * * "+self.fname+" w:$PROCESS_$CHANNEL\n")
         self.datacard.write("------------------------\n")
         self.datacard.write("bin" + '\t'.join( ['RecoBin%d'%j for j in range(0,self.nbins_y) ] ) + '\n')
-        self.datacard.write("observation" + '\t'.join( ['-1'%j for j in range(0,self.nbins_y) ] ) + '\n')
+        self.datacard.write("observation" + '\t'.join( ['-1' for j in range(0,self.nbins_y) ] ) + '\n')
         ## observation
         self.datacard.write("------------------------\n")
         binline = "bin"
