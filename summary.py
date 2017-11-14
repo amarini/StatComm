@@ -169,7 +169,12 @@ for idx,row in enumerate(c.execute("SELECT * from questionnaires;")):
         for key in quest:
             if 'intervals_software_' in key: 
                 label = re.sub('intervals_software_','',key)
-                if label != 'textarea':summ.fill('interval'+e, label)
+                if label != 'textarea': 
+                    summ.fill('interval'+e, label)
+                    if 'secac_wg' in quest:
+                        ## per pag fraction of interval usage / combine
+                        summ.fill('interval_wg_tot'+e,quest['secac_wg'])
+                        if label == "combine": summ.fill('interval_wg_combine'+e,quest['secac_wg'])
             if 'secunf_technique_' in key:
                 label = re.sub('secunf_technique_','',key)
                 if label != 'textarea':summ.fill('unfolding'+e, label)
@@ -190,6 +195,9 @@ print "using info from",npass,"questionnaires", "(NTOT=",ntot,"FAIL PARSE",nfail
 for e in ["","_recent"]:
     summ.dontnorm('pval_extreme_wg'+e+'_norm')
     summ.dontnorm('pval_extreme_wg'+e)
+    summ.dontnorm('interval_wg_combine'+e)
+    summ.dontnorm('interval_wg_tot'+e)
+
 summ.norm()
 summ.print_keys()
 ## DRAW
@@ -268,6 +276,55 @@ with plt.xkcd():
     ax1.axis('equal') 
     plt.suptitle("subgroups using combine (2015+)")
     plt.savefig(pp, format='pdf')
+
+    ## extra for combine
+    for e in ["","_recent"]:
+        norm = summ.get('interval_wg_tot'+e)
+        numerator = summ.get('interval_wg_combine'+e)
+
+        data = []
+        err = [] ## central errors, 
+        errLow=[] ## C-P intervals
+        errHigh=[] ## C-P intervals
+        labels=[]
+        for key in numerator:
+            p=numerator[key]/norm[key] ## compact writing
+            data.append(p)
+            labels.append(key)
+            err.append( 1./math.sqrt(norm[key]) * math.sqrt( p*(1.-p) ))
+            n = norm[key] ## compact writing
+            x= numerator[key] ## compact writing
+            a=0.682689492137086
+            #low = beta.betainv(a/2.,x,n-x+1)
+            #hi = beta.betainv(1.-a/2.,x+1,n-x)
+            low = ROOT.TEfficiency.ClopperPearson(n,x,a,False) 
+            hi = ROOT.TEfficiency.ClopperPearson(n,x,a,True)
+            errLow.append( p-low)
+            errHigh.append( hi -p )
+            print key,p,"low=",low,"high",hi
+
+        fig, ax1 = plt.subplots()
+        fig = plt.figure()
+        pos=np.arange(len(data))
+        ax = fig.add_axes((0.1, 0.2, 0.8, 0.7))
+        width=0.25
+        rects1 = ax.bar(pos-width/2., data,width, color='lightskyblue',  yerr=[errLow,errHigh], ecolor='black')
+        #ax.errorbar(pos-width/2., data, yerr=errCP, fmt='')
+
+        ax.spines['right'].set_color('none')
+        ax.spines['top'].set_color('none')
+
+        xTickMarks = labels
+        ax.set_xticks(pos)
+        xtickNames = ax.set_xticklabels(xTickMarks)
+        plt.setp(xtickNames, rotation=45, fontsize=10)
+        ax.tick_params(axis='both', direction='out', top=False, right=False)
+
+        #plt.suptitle("WG for pvalue extreme 1% (2015+)")
+        t = "combine usage per PAG"
+        if e != "": t += " (2015+)"
+        plt.suptitle(t)
+        plt.savefig(pp, format='pdf')
 
     fig, ax1 = plt.subplots()
     fracs,labels=summ.getFractions('unfolding')
