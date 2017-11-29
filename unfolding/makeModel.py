@@ -141,6 +141,7 @@ class Model():
         self.Import(self.MH )
 
         ## construct data
+        #self.y_th1 = ROOT.TH1D("y_th1","binned version of reco model",self.nbins_y, xmin,xmax)
         #self.dataObs=[]
         for j in range(0,self.nbins_y):
             nbins=200 ## every 0.2 GeV
@@ -260,11 +261,34 @@ class Model():
         self.datacard.write("###### Regularization lines. Uncomment to enable regularization.\n")
         self.datacard.write("###### Requsites for regularization studies:\n")
         self.datacard.write("######  git pull git@github.com:amarini/HiggsAnalysis-CombinedLimit/topic_regularization2016\n")
-        self.datacard.write("## delta extArg 0.03\n") 
-        self.datacard.write("## nuisance edit delta freeze\n")
         for i in range(0,self.nbins_x):
             if i==0 or i==self.nbins_x: continue
-            self.datacard.write("## constr%d"%i+ " constr const%(bin)d_In[0.],RooFormulaVar::fconstr%(bin)d(\"r_Bin%(prev)d+r_Bin%(next)d-2*r_Bin%(bin)d\",{r_Bin%(prev)d,r_Bin%(bin)d,r_Bin%(next)d}),constr%(bin)d_S[delta]\n" %{"bin":i,"next":i+1,"prev":i-1} )
+            self.datacard.write("## constr%d"%i+ " constr const%(bin)d_In[0.],RooFormulaVar::fconstr%(bin)d(\"r_Bin%(prev)d+r_Bin%(next)d-2*r_Bin%(bin)d\",{r_Bin%(prev)d,r_Bin%(bin)d,r_Bin%(next)d}),constr%(bin)d_S[%(delta)s]\n" %{"bin":i,"next":i+1,"prev":i-1,"delta":0.03} )
+
+        self.datacard.write("#######################################\n")
+        self.datacard.write("###### TUnfold like\n")
+        for i in range(0,self.nbins_x):
+            if i==0 or i==self.nbins_x: continue
+            d = {"bin":i,"next":i+1,"prev":i-1,"delta":0.03}
+            lambdaMCList =[]
+            lambdaMCPList =[]
+            lambdaMCNList =[]
+            varList=[]
+            for j in range(0,self.nbins_y):
+                norm ='GenBin%d_RecoBin%d_norm'%(i,j )
+                p ='GenBin%d_RecoBin%d_norm'%(i-1,j )
+                n ='GenBin%d_RecoBin%d_norm'%(i+11,j )
+                lambdaMCList .append(norm)
+                lambdaMCPList .append(p)
+                lambdaMCNList .append(n)
+                varList.extend([norm,p,n])
+
+            d['lambdaMC'] = "("+'+'.join(lambdaMCList)+")"
+            d['lambdaMC_prev'] = "("+'+'.join(lambdaMCPList)+")"
+            d['lambdaMC_next'] = "("+'+'.join(lambdaMCNList)+")"
+            d['lambdaMC_vars'] = ','.join(varList)
+
+            self.datacard.write("## constr%d"%i+ " constr const%(bin)d_In[0.],RooFormulaVar::fconstr%(bin)d(\"(r_Bin%(prev)d-1.)*%(lambdaMC_prev)s+r_Bin%(next)d*%(lambdaMC_next)s-2*r_Bin%(bin)d*%(lambdaMC)s\",{r_Bin%(prev)d,r_Bin%(bin)d,r_Bin%(next)d,%(lambdaMC_vars)s}),constr%(bin)d_S[%(delta)s]\n" % d )
         self.datacard.write("#######################################\n")
 
         self.datacard.write("\n")
@@ -288,9 +312,10 @@ class Model():
         self.datacard.write("##   -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel "+binbybin+"\n")
         self.datacard.write("##\n")
 
-        expect="--setPhysicsModelParameters="+','.join(["r_Bin%d=1"%i for i in range(0,self.nbins_x)])
+        ## in the old combine version this was setPhysicsModelParameters
+        expect="--setParameters="+','.join(["r_Bin%d=1"%i for i in range(0,self.nbins_x)])
         self.datacard.write("## combine -M MultiDimFit "+expect+" -t -1 -m 125 "+rootname+"\n")
-        self.datacard.write("## combine -M MultiDimFit "+expect+" -t -1 -m 125 --algo=grid --points=100 -P r_Bin1 --floatOtherPOIs=1 "+rootname+"\n")
+        self.datacard.write("## combine -M MultiDimFit "+expect+" -t -1 -m 125 --algo=grid --points=100 -P r_Bin1 --setParameterRanges r_Bin1=0.5,1.5 --floatOtherPOIs=1 "+rootname+"\n")
         self.datacard.write("###############################\n")
         self.datacard.close()
 
