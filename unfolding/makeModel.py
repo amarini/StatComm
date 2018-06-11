@@ -262,13 +262,16 @@ class Model():
         self.datacard.write("###### Requsites for regularization studies:\n")
         self.datacard.write("######  git pull git@github.com:amarini/HiggsAnalysis-CombinedLimit/topic_regularization2016\n")
         for i in range(0,self.nbins_x):
-            if i==0 or i==self.nbins_x: continue
-            self.datacard.write("## constr%d"%i+ " constr const%(bin)d_In[0.],RooFormulaVar::fconstr%(bin)d(\"r_Bin%(prev)d+r_Bin%(next)d-2*r_Bin%(bin)d\",{r_Bin%(prev)d,r_Bin%(bin)d,r_Bin%(next)d}),constr%(bin)d_S[%(delta)s]\n" %{"bin":i,"next":i+1,"prev":i-1,"delta":0.03} )
+            if i==0 or i==self.nbins_x-1: continue
+            ## different strength vars
+            #self.datacard.write("## constr%d"%i+ " constr const%(bin)d_In[0.],RooFormulaVar::fconstr%(bin)d(\"r_Bin%(prev)d+r_Bin%(next)d-2*r_Bin%(bin)d\",{r_Bin%(prev)d,r_Bin%(bin)d,r_Bin%(next)d}),constr%(bin)d_S[%(delta)s]\n" %{"bin":i,"next":i+1,"prev":i-1,"delta":0.03} )
+            ## one -> delta
+            self.datacard.write("## constr%d"%i+ " constr const%(bin)d_In[0.],RooFormulaVar::fconstr%(bin)d(\"r_Bin%(prev)d+r_Bin%(next)d-2*r_Bin%(bin)d\",{r_Bin%(prev)d,r_Bin%(bin)d,r_Bin%(next)d}),delta[%(delta)s]\n" %{"bin":i,"next":i+1,"prev":i-1,"delta":0.03} )
 
         self.datacard.write("#######################################\n")
         self.datacard.write("###### TUnfold like\n")
         for i in range(0,self.nbins_x):
-            if i==0 or i==self.nbins_x: continue
+            if i==0 or i==self.nbins_x-1: continue
             d = {"bin":i,"next":i+1,"prev":i-1,"delta":0.03}
             lambdaMCList =[]
             lambdaMCPList =[]
@@ -288,7 +291,8 @@ class Model():
             d['lambdaMC_next'] = "("+'+'.join(lambdaMCNList)+")"
             d['lambdaMC_vars'] = ','.join(varList)
 
-            self.datacard.write("## constr%d"%i+ " constr const%(bin)d_In[0.],RooFormulaVar::fconstr%(bin)d(\"(r_Bin%(prev)d-1.)*%(lambdaMC_prev)s+r_Bin%(next)d*%(lambdaMC_next)s-2*r_Bin%(bin)d*%(lambdaMC)s\",{r_Bin%(prev)d,r_Bin%(bin)d,r_Bin%(next)d,%(lambdaMC_vars)s}),constr%(bin)d_S[%(delta)s]\n" % d )
+            ##self.datacard.write("## constr%d"%i+ " constr const%(bin)d_In[0.],RooFormulaVar::fconstr%(bin)d(\"(r_Bin%(prev)d-1.)*%(lambdaMC_prev)s+r_Bin%(next)d*%(lambdaMC_next)s-2*r_Bin%(bin)d*%(lambdaMC)s\",{r_Bin%(prev)d,r_Bin%(bin)d,r_Bin%(next)d,%(lambdaMC_vars)s}),constr%(bin)d_S[%(delta)s]\n" % d )
+            self.datacard.write("## constr%d"%i+ " constr const%(bin)d_In[0.],RooFormulaVar::fconstr%(bin)d(\"(r_Bin%(prev)d-1.)*%(lambdaMC_prev)s+r_Bin%(next)d*%(lambdaMC_next)s-2*r_Bin%(bin)d*%(lambdaMC)s\",{r_Bin%(prev)d,r_Bin%(bin)d,r_Bin%(next)d,%(lambdaMC_vars)s}),delta[%(delta)s]\n" % d )
         self.datacard.write("#######################################\n")
 
         self.datacard.write("\n")
@@ -325,10 +329,15 @@ class Model():
 if __name__=="__main__":
     from optparse import OptionParser
     parser = OptionParser()
+    parser.add_option("","--doCC",action='store_true',help="do Cut and Count [%default]",default=False)
     opts,args = parser.parse_args()
 
     model=Model()
     model.type='pdf'
+    if opts.doCC : 
+        model.type = 'c&c'
+        model.fname = "workspace_cc.root"
+        model.dname = "datacard_cc.txt"
     #model.type='c&c'
     model.run()
     print "---- DONE ----"
