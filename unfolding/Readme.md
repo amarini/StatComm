@@ -54,6 +54,24 @@ $$ L= \prod_j \mathcal{P}(y_j|\Sum_i x_i R_ij + b_j) $$
 Not that is complex extraction through ancillary variables indexed trough k (e.g. invariant mass of something):
 $$ L = \prod_j \prod_k \mathcal{P}(y_jk| \Sum_i x_ik Rijk + b_j) $$ (TO CHECK)
 
+observation are now extracted through likelihood profile:
+~~~bash
+text2workspace.py -m 125 --X-allow-no-background -o datacard.root datacard.txt
+   -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel --PO map='.*GenBin0.*:r_Bin0[1,-1,20]' --PO map='.*GenBin1.*:r_Bin1[1,-1,20]' --PO map='.*GenBin2.*:r_Bin2[1,-1,20]' --PO map='.*GenBin3.*:r_Bin3[1,-1,20]' --PO map='.*GenBin4.*:r_Bin4[1,-1,20]'
+
+## combine -M MultiDimFit --setParameters=r_Bin0=1,r_Bin1=1,r_Bin2=1,r_Bin3=1,r_Bin4=1 -t -1 -m 125 datacard.root
+## combine -M MultiDimFit --setParameters=r_Bin0=1,r_Bin1=1,r_Bin2=1,r_Bin3=1,r_Bin4=1 -t -1 -m 125 --algo=grid --points=100 -P r_Bin1 --setParameterRanges r_Bin1=0.5,1.5 --floatOtherPOIs=1 datacard.root
+~~~
+
+Notice that switching to the so called bin-by-bin (strongly discouraged except for tests) it is also quite easy:
+~~~bash
+for bin by bin use:
+  -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel --PO map='.*RecoBin0.*:r_Bin0[1,-1,20]' --PO map='.*RecoBin1.*:r_Bin1[1,-1,20]' --PO map='.*RecoBin2.*:r_Bin2[1,-1,20]' --PO map='.*RecoBin3.*:r_Bin3[1,-1,20]' --PO map='.*RecoBin4.*:r_Bin4[1,-1,20]'
+~~~
+
+Usually, observation are extracted for each bin, profiling all the others, and using 1-parameter minos approach for each bin.
+2D or 3D (or 100D if you have CPU power!)  likelihood  may also be possible. Hesse can be run on the best fit to derive approximate correlation matrix.
+
 Given the true spectrum with the same MC x_true, the observations are now, remembering that R includes corrected efficiency and acceptance factors:
 $$ x_obs = x_true * mu_obs $$
 
